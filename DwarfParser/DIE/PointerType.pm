@@ -3,6 +3,8 @@ package DwarfParser::DIE::PointerType;
 use strict;
 use warnings;
 
+use base 'DwarfParser::DIE';
+
 sub new {
   my ($class, $id, $type, $byte_size) = @_;
 
@@ -13,22 +15,23 @@ sub new {
   }, $class;
 }
 
-sub pp_proto {
-  my ($self, $types) = @_;
-
-  "void dwarfparser__" . $self->{id} . "(UT_string * s, void * _x)";
-}
-
 sub pp_fun {
   my ($self, $types) = @_;
 
   my $type = $types->{$self->{type}};
   my $name = ($type && $type->can('name')) ? $type->name : 'void';
-  if ($name eq 'char') {
-    $self->pp_proto($types) . " {\n  char * x = _x;\n  if (x) {\n    utstring_printf(s, \"\\\"%s\\\"\", x);\n} } ";
+
+  my $str = $self->pp_proto($types);
+
+  if (! $type) {
+    $str .= " {\n  void * x = _x;\n  if (x) {\n    utstring_printf(s, \"%p\", x);\n  } ";
+  } elsif ($name eq 'char') {
+    $str .= " {\n  char * x = _x;\n  if (x) {\n    utstring_printf(s, \"\\\"%s\\\"\", x);\n  } ";
   } else {
-    $self->pp_proto($types) . " {\n  $name * x = _x;\n  if (x) {\n    dwarfparser__" . $self->{type} . "(s, x);\n}\n  else { utstring_printf(s, \"NULL\"); }\n }";
+    $str .= " {\n  $name * x = _x;\n  if (x) {\n    dwarfparser__" . $self->{type} . "(s, x, indent);\n  }";
   }
+
+  $str .= " else {\n    utstring_printf(s, \"NULL\");\n  }\n}";
 }
 
 sub children {
@@ -36,6 +39,8 @@ sub children {
 
   return if ($seen->{$self});
   $seen->{$self} = 1;
+
+  return if (! $self->{type});
 
   my $type = $types->{$self->{type}};
 

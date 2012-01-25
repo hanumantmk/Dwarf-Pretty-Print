@@ -3,6 +3,8 @@ package DwarfParser::DIE::Struct;
 use strict;
 use warnings;
 
+use base 'DwarfParser::DIE';
+
 sub new {
   my ($class, $id, $name) = @_;
 
@@ -25,23 +27,28 @@ sub add_member {
   $self->{members}{$key} = $val;
 }
 
-sub pp_proto {
-  my ($self, $types) = @_;
-
-  "void dwarfparser__" . $self->{id} . "(UT_string * s, void * _x)";
-}
-
 sub pp_fun {
   my ($self, $types) = @_;
 
-  $self->pp_proto($types) . " {\n  " . $self->name . " * x = _x;\n  utstring_printf(s, " . '"(' . $self->name . " *) {\"); " . join(
-  "  utstring_printf(s, \",\");\n  "
+  $self->pp_proto($types) . " {\n  " . $self->name . " * x = _x;
+  utstring_printf(s, " . '"(' . $self->name . " *) {\");
+  indent += 2;
+  char * INDENT = malloc(indent + 1);
+  memset(INDENT, ' ', indent);
+  INDENT[indent] = '\\0';
+  utstring_printf(s, \"\\n\");\n
+  " . join(
+  "utstring_printf(s, \",\\n\");\n"
   , map {
     my $child_type = $types->{$self->{members}{$_}};
     my $access = $child_type && $child_type->isa('DwarfParser::DIE::PointerType') ? "x->$_" : "&(x->$_)";
 
-    'dwarfparser__' . $self->{members}{$_} . "(s, $access);\n"
-  } ( sort keys %{$self->{members}})) . ' utstring_printf(s, "}");' . "\n}";
+    "  utstring_printf(s, \"%s$_ : \", INDENT);\n" .
+    '  dwarfparser__' . $self->{members}{$_} . "(s, $access, indent);\n";
+  } ( sort keys %{$self->{members}})) .
+  "  INDENT[indent - 2] = '\\0'; " .
+  '  utstring_printf(s, "\n%s}", INDENT);' .
+  "\n  free(INDENT);\n}";
 }
 
 sub children {

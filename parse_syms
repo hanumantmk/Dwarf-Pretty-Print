@@ -12,12 +12,10 @@ use DwarfParser::DIE::Typedef;
 my @names;
 my @sincludes;
 my @lincludes;
-my $type = 'all';
 GetOptions(
   'names=s'              => \@names,
   'si|system_includes=s' => \@sincludes,
   'li|local_includes=s'  => \@lincludes,
-  'type=s'               => \$type,
 );
 
 unshift @sincludes, "stdio.h";
@@ -36,6 +34,7 @@ use constant JUMP_TABLE => {
   'base_type'      => \&handle_base_type,
   'pointer_type'   => \&handle_pointer_type,
   'typedef'        => \&handle_typedef,
+  'array_type'     => \&handle_array,
 };
 
 my $last_type;
@@ -77,26 +76,22 @@ if (@names) {
 my %deduped_types = map { $_->{id}, $_ } map { $types{$_}->children(\%types, {}) } values %names;
 %types = %deduped_types;
 
-if ($type eq 'all' || $type eq 'headers') {
-  print join('', map { "#include <$_>\n" } @sincludes);
-  print join('', map { "#include \"$_\"\n" } @lincludes);
+print join('', map { "#include <$_>\n" } @sincludes);
+print join('', map { "#include \"$_\"\n" } @lincludes);
 
-  print "\n\n// DEFINES\n";
-  foreach my $type (grep { $_->can('pp_define') } values %types) {
-    print $type->pp_define(\%types) . "\n";
-  }
-
-  print "\n\n// PROTOTYPES\n";
-  foreach my $type (grep { $_->can('pp_proto') } values %types) {
-    print $type->pp_proto(\%types) . ";\n";
-  }
+print "\n\n// PROTOTYPES\n";
+foreach my $type (grep { $_->can('pp_proto') } values %types) {
+  print $type->pp_proto(\%types) . ";\n";
 }
 
-if ($type eq 'all' || $type eq 'code') {
-  print "\n\n// PRETTY PRINTERS\n";
-  foreach my $type (grep { $_->can('pp_fun') } values %types) {
-    print $type->pp_fun(\%types) . "\n";
-  }
+print "\n\n// PRETTY PRINTERS\n";
+foreach my $type (grep { $_->can('pp_fun') } values %types) {
+  print $type->pp_fun(\%types) . "\n";
+}
+
+print "\n\n// EXTERNAL\n";
+foreach my $type (map { $types{$_} } values %names) {
+  print $type->pp_wrap_human(\%types) . "\n";
 }
 
 sub handle_struct {
@@ -151,4 +146,16 @@ sub handle_typedef {
 
   $names{$name} = $id;
   $types{$id} = DwarfParser::DIE::Typedef->new($id, $name, $type);
+}
+
+sub handle_array {
+  my ($id, $params) = @_;
+
+  my $type;
+
+  if ($params->{type}) {
+    ($type) = ($params->{type} =~ /^<(\d+)>$/);
+  }
+
+  $types{$id} = DwarfParser::DIE::PointerType->new($id, $type, 4);
 }

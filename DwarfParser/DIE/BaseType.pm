@@ -3,6 +3,8 @@ package DwarfParser::DIE::BaseType;
 use strict;
 use warnings;
 
+use base 'DwarfParser::DIE';
+
 sub new {
   my ($class, $id, $name, $encoding, $byte_size) = @_;
 
@@ -18,12 +20,6 @@ sub name {
   my $self = shift;
 
   return $self->{name};
-}
-
-sub pp_proto {
-  my ($self, $types) = @_;
-
-  "void dwarfparser__" . $self->{id} . "(UT_string * s, void * _x)";
 }
 
 sub pp_fun {
