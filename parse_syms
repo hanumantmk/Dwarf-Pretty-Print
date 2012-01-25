@@ -49,6 +49,8 @@ TOP: while (my $line = <$dwarf_syms>) {
 
   $id or next;
 
+  $id =~ s/^0x0*//;
+
   $type =~ s/^DW_TAG_//;
 
   my %params;
@@ -63,6 +65,17 @@ TOP: while (my $line = <$dwarf_syms>) {
     my ($key, $value) = ($1, $2);
 
     $params{$key} = $value;
+  }
+
+  if ($params{name}) {
+    $params{name} =~ s/"//g;
+    $params{name} =~ s/ /__/g;
+  }
+
+  if ($params{type}) {
+    $params{type} =~ /^<(.+?)>$/;
+    $params{type} = $1;
+    $params{type} =~ s/^0x0*//;
   }
 
   if (JUMP_TABLE->{$type}) {
@@ -109,9 +122,8 @@ sub handle_struct_member {
   my ($id, $params) = @_;
 
   my $name = $params->{name};
-  my ($type) = ($params->{type} =~ /^<(\d+)>$/);
 
-  $last_type->add_member($name, $type);
+  $last_type->add_member($name, $params->{type});
 }
 
 sub handle_base_type {
@@ -130,36 +142,22 @@ sub handle_base_type {
 sub handle_pointer_type {
   my ($id, $params) = @_;
 
-  my $byte_size = $params->{byte_size};
-  my $type;
-
-  if ($params->{type}) {
-    ($type) = ($params->{type} =~ /^<(\d+)>$/);
-  }
-
-  $types{$id} = DwarfParser::DIE::PointerType->new($id, $type, $byte_size);
+  $types{$id} = DwarfParser::DIE::PointerType->new($id, $params->{type}, $params->{byte_size});
 }
 
 sub handle_typedef {
   my ($id, $params) = @_;
 
   my $name = $params->{name};
-  my ($type) = ($params->{type} =~ /^<(\d+)>$/);
 
   $names{$name} = $id;
-  $types{$id} = DwarfParser::DIE::Typedef->new($id, $name, $type);
+  $types{$id} = DwarfParser::DIE::Typedef->new($id, $name, $params->{type});
 }
 
 sub handle_array {
   my ($id, $params) = @_;
 
-  my $type;
-
-  if ($params->{type}) {
-    ($type) = ($params->{type} =~ /^<(\d+)>$/);
-  }
-
-  $last_type = $types{$id} = DwarfParser::DIE::Array->new($id, $type);
+  $last_type = $types{$id} = DwarfParser::DIE::Array->new($id, $params->{type});
 }
 
 sub handle_subrange {
