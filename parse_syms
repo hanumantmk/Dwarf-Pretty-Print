@@ -8,6 +8,7 @@ use DwarfParser::DIE::Struct;
 use DwarfParser::DIE::BaseType;
 use DwarfParser::DIE::PointerType;
 use DwarfParser::DIE::Typedef;
+use DwarfParser::DIE::Array;
 
 my @names;
 my @sincludes;
@@ -35,6 +36,7 @@ use constant JUMP_TABLE => {
   'pointer_type'   => \&handle_pointer_type,
   'typedef'        => \&handle_typedef,
   'array_type'     => \&handle_array,
+  'subrange_type'  => \&handle_subrange,
 };
 
 my $last_type;
@@ -157,5 +159,13 @@ sub handle_array {
     ($type) = ($params->{type} =~ /^<(\d+)>$/);
   }
 
-  $types{$id} = DwarfParser::DIE::PointerType->new($id, $type, 4);
+  $last_type = $types{$id} = DwarfParser::DIE::Array->new($id, $type);
+}
+
+sub handle_subrange {
+  my ($id, $params) = @_;
+
+  my $upper_bound = $params->{upper_bound};
+
+  $last_type->{size} = $upper_bound + 1;
 }
