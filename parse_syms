@@ -1,0 +1,154 @@
+#!/usr/bin/perl -w
+
+use strict;
+
+use Getopt::Long;
+
+use DwarfParser::DIE::Struct;
+use DwarfParser::DIE::BaseType;
+use DwarfParser::DIE::PointerType;
+use DwarfParser::DIE::Typedef;
+
+my @names;
+my @sincludes;
+my @lincludes;
+my $type = 'all';
+GetOptions(
+  'names=s'              => \@names,
+  'si|system_includes=s' => \@sincludes,
+  'li|local_includes=s'  => \@lincludes,
+  'type=s'               => \$type,
+);
+
+unshift @sincludes, "stdio.h";
+push @lincludes, "utstring.h";
+
+my %names; #strings
+my %types; #numbers
+
+my @objects = @ARGV;
+
+open my $dwarf_syms, "dwarfdump -di @objects |" or die "Couldn't open pipe to dwarfdump: $!";
+
+use constant JUMP_TABLE => {
+  'structure_type' => \&handle_struct,
+  'member'         => \&handle_struct_member,
+  'base_type'      => \&handle_base_type,
+  'pointer_type'   => \&handle_pointer_type,
+  'typedef'        => \&handle_typedef,
+};
+
+my $last_type;
+TOP: while (my $line = <$dwarf_syms>) {
+  next unless ($line =~ /^<\d+>/);
+
+  $line =~ s/^<(.+?)><(.+?)><(.+?)> //;
+
+  my ($scope, $id, $type) = ($1, $2, $3);
+
+  $id or next;
+
+  $type =~ s/^DW_TAG_//;
+
+  my %params;
+
+  my $old_line = '';
+  while ($line) {
+    next TOP if ($old_line eq $line);
+    $old_line = $line;
+
+    $line =~ s/^DW_AT_(.+?)<(.+?)>\s+//;
+
+    my ($key, $value) = ($1, $2);
+
+    $params{$key} = $value;
+  }
+
+  if (JUMP_TABLE->{$type}) {
+    JUMP_TABLE->{$type}->($id, \%params);
+  }
+}
+
+if (@names) {
+  my %reduced_names = map { $_, $names{$_} } @names;
+  %names = %reduced_names;
+}
+
+my %deduped_types = map { $_->{id}, $_ } map { $types{$_}->children(\%types, {}) } values %names;
+%types = %deduped_types;
+
+if ($type eq 'all' || $type eq 'headers') {
+  print join('', map { "#include <$_>\n" } @sincludes);
+  print join('', map { "#include \"$_\"\n" } @lincludes);
+
+  print "\n\n// DEFINES\n";
+  foreach my $type (grep { $_->can('pp_define') } values %types) {
+    print $type->pp_define(\%types) . "\n";
+  }
+
+  print "\n\n// PROTOTYPES\n";
+  foreach my $type (grep { $_->can('pp_proto') } values %types) {
+    print $type->pp_proto(\%types) . ";\n";
+  }
+}
+
+if ($type eq 'all' || $type eq 'code') {
+  print "\n\n// PRETTY PRINTERS\n";
+  foreach my $type (grep { $_->can('pp_fun') } values %types) {
+    print $type->pp_fun(\%types) . "\n";
+  }
+}
+
+sub handle_struct {
+  my ($id, $params) = @_;
+
+  my $name = $params->{name};
+
+  $names{$name} = $id if $name;
+  $last_type = $types{$id} = DwarfParser::DIE::Struct->new($id, $name);
+}
+
+sub handle_struct_member {
+  my ($id, $params) = @_;
+
+  my $name = $params->{name};
+  my ($type) = ($params->{type} =~ /^<(\d+)>$/);
+
+  $last_type->add_member($name, $type);
+}
+
+sub handle_base_type {
+  my ($id, $params) = @_;
+
+  my $name      = $params->{name};
+  my $encoding  = $params->{encoding};
+  my $byte_size = $params->{byte_size};
+
+  $encoding =~ s/^DW_ATE_//;
+
+  $names{$name} = $id if $name;
+  $types{$id} = DwarfParser::DIE::BaseType->new($id, $name, $encoding, $byte_size);
+}
+
+sub handle_pointer_type {
+  my ($id, $params) = @_;
+
+  my $byte_size = $params->{byte_size};
+  my $type;
+
+  if ($params->{type}) {
+    ($type) = ($params->{type} =~ /^<(\d+)>$/);
+  }
+
+  $types{$id} = DwarfParser::DIE::PointerType->new($id, $type, $byte_size);
+}
+
+sub handle_typedef {
+  my ($id, $params) = @_;
+
+  my $name = $params->{name};
+  my ($type) = ($params->{type} =~ /^<(\d+)>$/);
+
+  $names{$name} = $id;
+  $types{$id} = DwarfParser::DIE::Typedef->new($id, $name, $type);
+}
