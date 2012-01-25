@@ -15,6 +15,12 @@ sub new {
   }, $class;
 }
 
+sub name {
+  my ($self, $types) = @_;
+
+  $types->{$self->{type}}->name . ' *';
+}
+
 sub pp_fun {
   my ($self, $types) = @_;
 

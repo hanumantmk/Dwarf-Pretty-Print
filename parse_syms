@@ -9,6 +9,7 @@ use DwarfParser::DIE::BaseType;
 use DwarfParser::DIE::PointerType;
 use DwarfParser::DIE::Typedef;
 use DwarfParser::DIE::Array;
+use DwarfParser::DIE::Subroutine;
 
 my @names;
 my @sincludes;
@@ -30,22 +31,31 @@ my @objects = @ARGV;
 open my $dwarf_syms, "dwarfdump -di @objects |" or die "Couldn't open pipe to dwarfdump: $!";
 
 use constant JUMP_TABLE => {
-  'structure_type' => \&handle_struct,
-  'member'         => \&handle_struct_member,
-  'base_type'      => \&handle_base_type,
-  'pointer_type'   => \&handle_pointer_type,
-  'typedef'        => \&handle_typedef,
-  'array_type'     => \&handle_array,
-  'subrange_type'  => \&handle_subrange,
+  'structure_type'   => \&handle_struct,
+  'member'           => \&handle_struct_member,
+  'base_type'        => \&handle_base_type,
+  'pointer_type'     => \&handle_pointer_type,
+  'typedef'          => \&handle_typedef,
+  'array_type'       => \&handle_array,
+  'subrange_type'    => \&handle_subrange,
+  'subroutine_type'  => \&handle_subroutine,
+  'formal_parameter' => \&handle_parameter,
 };
 
 my $last_type;
+my $last_scope = 0;
 TOP: while (my $line = <$dwarf_syms>) {
   next unless ($line =~ /^<\d+>/);
 
   $line =~ s/^<(.+?)><(.+?)><(.+?)> //;
 
   my ($scope, $id, $type) = ($1, $2, $3);
+
+  $scope ||= 0;
+
+  if ($last_scope > $scope) {
+    undef($last_type);
+  }
 
   $id or next;
 
@@ -81,6 +91,8 @@ TOP: while (my $line = <$dwarf_syms>) {
   if (JUMP_TABLE->{$type}) {
     JUMP_TABLE->{$type}->($id, \%params);
   }
+
+  $last_scope = $scope;
 }
 
 if (@names) {
@@ -166,4 +178,16 @@ sub handle_subrange {
   my $upper_bound = $params->{upper_bound};
 
   $last_type->{size} = $upper_bound + 1;
+}
+
+sub handle_subroutine {
+  my ($id, $params) = @_;
+
+  $last_type = $types{$id} = DwarfParser::DIE::Subroutine->new($id, $params->{type});
+}
+
+sub handle_parameter {
+  my ($id, $params) = @_;
+
+  push @{$last_type->{params}}, $params->{type};
 }
