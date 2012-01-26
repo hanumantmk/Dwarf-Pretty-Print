@@ -8,13 +8,13 @@ sub pp_proto {
 
   my $type = ref($self);
 
-  "void dwarfparser__" . $self->{id} . "(dwarf_pp_context_t * c, void * _x, int indent)";
+  "void dwarfparser__" . $self->{id} . "(dwarf_pp_context_t * c, void * _x)";
 }
 
 sub pp_wrap_human {
   my $self = shift;
 
-  "void dwarfparser_" . $self->name . "(dwarf_pp_context_t * c, void * x) {\n  dwarfparser__" . $self->{id} . "(c, x, 0);\n}";
+  "void dwarfparser_" . $self->name . "(dwarf_pp_context_t * c, void * x) {\n  dwarfparser__" . $self->{id} . "(c, x);\n}";
 }
 
 sub _pp_check {
@@ -25,8 +25,9 @@ sub _pp_check {
 
   <<CODE
   // $class
-  if (! dwarf_pp_context_add(c, &$name, _x)) {
-    utstring_printf(c->s, "\\"circular reference\\"");
+  char * str;
+  if ((str = dwarf_pp_context_add(c, &$name, _x))) {
+    utstring_printf(c->s, "%s", str);
     return;
   }
 CODE

@@ -31,7 +31,7 @@ sub pp_fun {
   <<CODE
 $proto
 {
-  dwarfparser__$type_id(c, _x, indent);
+  dwarfparser__$type_id(c, _x);
 }
 CODE
   ;

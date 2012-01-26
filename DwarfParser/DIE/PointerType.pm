@@ -52,7 +52,7 @@ TAIL
     $tail = <<TAIL
   $name * x = _x;
   if (x) {
-    dwarfparser__$type_id(c, x, indent);
+    dwarfparser__$type_id(c, x);
   }
 TAIL
     ;

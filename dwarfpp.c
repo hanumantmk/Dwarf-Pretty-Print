@@ -14,7 +14,38 @@ dwarf_pp_context_t * dwarf_pp_context_new()
   return c;
 }
 
-int dwarf_pp_context_add(dwarf_pp_context_t * c, void * func, void * obj)
+void dwarf_pp_context_push(dwarf_pp_context_t * c, char * fmt, ...)
+{
+  dwarf_stack_t * node = calloc(sizeof(*node), 1);
+
+  va_list ap;
+  va_start(ap, fmt);
+  vasprintf(&(node->str), fmt, ap);
+  va_end(ap);
+
+  DL_APPEND(c->stack, node);
+
+  c->ws[c->level * 2] = ' ';
+  c->level++;
+  c->ws[c->level * 2] = '\0';
+}
+
+void dwarf_pp_context_pop(dwarf_pp_context_t * c)
+{
+  dwarf_stack_t * node = c->stack->prev;
+
+  assert(c->level > 0);
+  DL_DELETE(c->stack, node);
+
+  c->ws[c->level * 2] = ' ';
+  c->level--;
+  c->ws[c->level * 2] = '\0';
+
+  free(node->str);
+  free(node);
+}
+
+char * dwarf_pp_context_add(dwarf_pp_context_t * c, void * func, void * obj)
 {
   dwarf_seen_t * node;
   void * key[2] = { func, obj };
@@ -22,16 +53,23 @@ int dwarf_pp_context_add(dwarf_pp_context_t * c, void * func, void * obj)
   HASH_FIND(hh, c->lookup, key, sizeof(key), node);
 
   if (node) {
-    return 0;
+    return utstring_body(node->str);
   }
 
   node = calloc(sizeof(*node), 1);
   node->key[0] = func;
   node->key[1] = obj;
+  utstring_new(node->str);
+  utstring_printf(node->str, "ROOT");
+
+  dwarf_stack_t * ele;
+  DL_FOREACH(c->stack, ele) {
+    utstring_printf(node->str, "->%s", ele->str);
+  }
 
   HASH_ADD_KEYPTR(hh, c->lookup, node->key, sizeof(key), node);
 
-  return 1;
+  return NULL;
 }
 
 void dwarf_pp_context_destroy(dwarf_pp_context_t * c)
@@ -40,6 +78,7 @@ void dwarf_pp_context_destroy(dwarf_pp_context_t * c)
 
   HASH_ITER(hh, c->lookup, ele, tmp) {
     HASH_DEL(c->lookup, ele);
+    utstring_free(ele->str);
     free(ele);
   }
 
@@ -73,17 +112,4 @@ char * dwarfpp(void * obj, char * type)
   dwarf_pp_context_destroy(c);
 
   return out;
-}
-
-char * dwarf_pp_context_indent(dwarf_pp_context_t * c, int indent)
-{
-  assert(indent < 1024);
-
-  if (c->old_indent != indent) {
-    c->ws[c->old_indent] = ' ';
-    c->ws[indent] = '\0';
-    c->old_indent = indent;
-  }
-
-  return c->ws;
 }
