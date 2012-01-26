@@ -1,0 +1,40 @@
+This project relies on being able to consume debugging information (DWARF)
+about C executables to automatically generate C pretty printers.  It utilizes
+dwarfdump, to get at the symbols, some perl to process that into some C and
+dlopen to link in at runtime.
+
+Resources:
+  parse_syms - an automatic pretty print generator which reads dwarf debug
+               symbols out of objects with dwarfdump
+
+  dwarfpp - a linkable library that can be called to pretty print arbitrary
+            types
+
+
+./test
+
+# Example output for the given test.c
+
+#  foo_t f = { 0, "lol", 0, { 0 }, &foo };
+#  foo_t g = { 1000, "bar", &f, { 0 }, NULL };
+#
+#  f.bar = 10;
+#  f.foo_next = &g;
+#
+#  char * foo = dwarfpp(&g, "foo_t");
+
+( struct foo *) {
+  bar : 1000,
+  baz : "bar",
+  foo_next : ( struct foo *) {
+    bar : 10,
+    baz : "lol",
+    foo_next : "circular reference",
+    fun : int (* ?)(char *),
+    stuff : [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]
+
+  },
+  fun : NULL,
+  stuff : [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]
+
+}
