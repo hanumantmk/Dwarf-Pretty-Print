@@ -1,6 +1,7 @@
 #ifndef DWARFPP_H
 #define DWARFPP_H
 
+#include <assert.h>
 #include "uthash.h"
 #include "utstring.h"
 
@@ -12,6 +13,8 @@ typedef struct dwarf_seen {
 
 typedef struct dwarf_pp_context {
   dwarf_seen_t * lookup;
+  char ws[1024];
+  int old_indent;
   UT_string * s;
 } dwarf_pp_context_t;
 
@@ -20,5 +23,6 @@ char * dwarfpp(void * obj, char * type);
 dwarf_pp_context_t * dwarf_pp_context_new();
 int dwarf_pp_context_add(dwarf_pp_context_t * c, void * func, void * obj);
 void dwarf_pp_context_destroy(dwarf_pp_context_t * c);
+char * dwarf_pp_context_indent(dwarf_pp_context_t * c, int indent);
 
 #endif

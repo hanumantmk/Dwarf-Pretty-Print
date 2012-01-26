@@ -8,6 +8,8 @@ dwarf_pp_context_t * dwarf_pp_context_new()
 {
   dwarf_pp_context_t * c = calloc(sizeof(*c), 1);
   utstring_new(c->s);
+  memset(c->ws, ' ', 1024);
+  c->ws[0] = '\0';
 
   return c;
 }
@@ -71,4 +73,17 @@ char * dwarfpp(void * obj, char * type)
   dwarf_pp_context_destroy(c);
 
   return out;
+}
+
+char * dwarf_pp_context_indent(dwarf_pp_context_t * c, int indent)
+{
+  assert(indent < 1024);
+
+  if (c->old_indent != indent) {
+    c->ws[c->old_indent] = ' ';
+    c->ws[indent] = '\0';
+    c->old_indent = indent;
+  }
+
+  return c->ws;
 }

@@ -32,14 +32,14 @@ $proto
 {
 $check
   $name * x = _x;
-  utstring_printf(c->s, "[ ");
+  utstring_printf(c->s, "[\\n%s", dwarf_pp_context_indent(c, indent + 2));
   int i;
   for (i = 0; i < $size - 1; i++) {
     dwarfparser__$type_id(c, x + i, indent);
-    utstring_printf(c->s, ", ");
+    utstring_printf(c->s, ",\\n%s", dwarf_pp_context_indent(c, indent + 2));
   }
   dwarfparser__$type_id(c, x + i, indent);
-  utstring_printf(c->s, " ]");
+  utstring_printf(c->s, "\\n%s]", dwarf_pp_context_indent(c, indent));
 }
 CODE
   ;

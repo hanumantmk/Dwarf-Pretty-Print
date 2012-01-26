@@ -40,8 +40,8 @@ sub pp_fun {
     my $child_id = $self->{members}{$_};
 
     <<CHILD
-  utstring_printf(c->s, "%s$_ : ", INDENT);
-  dwarfparser__$child_id(c, $access, indent);
+  utstring_printf(c->s, "%s$_ : ", dwarf_pp_context_indent(c, indent + 2));
+  dwarfparser__$child_id(c, $access, indent + 2);
 CHILD
     ;
   } ( sort keys %{$self->{members}}));
@@ -51,16 +51,9 @@ $proto
 {
 $check
   $name * x = _x;
-  utstring_printf(c->s, "( $name *) {\\n");
-  indent += 2;
-  char * INDENT = malloc(indent + 1);
-  memset(INDENT, ' ', indent);
-  INDENT[indent] = '\\0';
+  utstring_printf(c->s, "$name {\\n");
 $body
-  utstring_printf(c->s, "\\n");
-  INDENT[indent - 2] = '\\0';
-  utstring_printf(c->s, "\\n%s}", INDENT);
-  free(INDENT);
+  utstring_printf(c->s, "\\n%s}", dwarf_pp_context_indent(c, indent));
 }
 CODE
   ;
