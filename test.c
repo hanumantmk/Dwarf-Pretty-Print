@@ -14,6 +14,7 @@ int main()
   foo_t g = { 1000, "bar", &f, { 0 }, NULL };
 
   f.bar = 10;
+  f.foo_next = &g;
 
   char * foo = dwarfpp(&g, "foo_t");
 

@@ -26,10 +26,17 @@ sub pp_fun {
   my $params = join(", ", map { $types->{$_} ? $types->{$_}->name($types) : '?' } @{$self->{params}});
 
   my $name = "$return (* ?)($params)";
+  my $proto = $self->pp_proto($types);
+  my $check = $self->_pp_check;
 
-  $self->pp_proto($types) . "{\n
-  utstring_printf(s, \"$name\");
-}";
+  <<CODE
+$proto
+{
+$check
+  utstring_printf(c->s, "$name");
+}
+CODE
+  ;
 }
 
 sub children {

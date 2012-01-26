@@ -24,7 +24,17 @@ sub name {
 sub pp_fun {
   my ($self, $types) = @_;
 
-  $self->pp_proto($types) . " {\n  dwarfparser__" . $self->{type} . "(s, _x, indent);\n} ";
+  my $proto = $self->pp_proto($types);
+  my $check = $self->_pp_check();
+  my $type_id = $self->{type};
+
+  <<CODE
+$proto
+{
+  dwarfparser__$type_id(c, _x, indent);
+}
+CODE
+  ;
 }
 
 sub children {

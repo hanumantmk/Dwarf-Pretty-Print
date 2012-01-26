@@ -25,7 +25,20 @@ sub name {
 sub pp_fun {
   my ($self, $types) = @_;
 
-  $self->pp_proto($types) . " {\n  " . $self->name . " * x = _x;\n  utstring_printf(s, ". '"%d"' . ", *x);\n}";
+  my $proto = $self->pp_proto($types);
+  my $check = $self->_pp_check;
+  my $name  = $self->name;
+
+  <<CODE
+$proto
+{
+$check
+  $name * x = _x;
+
+  utstring_printf(c->s, "%d", *x);
+}
+CODE
+  ;
 }
 
 sub children {

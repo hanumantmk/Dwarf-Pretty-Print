@@ -30,25 +30,40 @@ sub add_member {
 sub pp_fun {
   my ($self, $types) = @_;
 
-  $self->pp_proto($types) . " {\n  " . $self->name . " * x = _x;
-  utstring_printf(s, " . '"(' . $self->name . " *) {\");
+  my $proto = $self->pp_proto($types);
+  my $check = $self->_pp_check();
+  my $name = $self->name;
+
+  my $body = join("  utstring_printf(c->s, \",\\n\");\n", map {
+    my $child_type = $types->{$self->{members}{$_}};
+    my $access = $child_type && $child_type->isa('DwarfParser::DIE::PointerType') ? "x->$_" : "&(x->$_)";
+    my $child_id = $self->{members}{$_};
+
+    <<CHILD
+  utstring_printf(c->s, "%s$_ : ", INDENT);
+  dwarfparser__$child_id(c, $access, indent);
+CHILD
+    ;
+  } ( sort keys %{$self->{members}}));
+
+  <<CODE
+$proto
+{
+$check
+  $name * x = _x;
+  utstring_printf(c->s, "( $name *) {\\n");
   indent += 2;
   char * INDENT = malloc(indent + 1);
   memset(INDENT, ' ', indent);
   INDENT[indent] = '\\0';
-  utstring_printf(s, \"\\n\");\n
-  " . join(
-  "utstring_printf(s, \",\\n\");\n"
-  , map {
-    my $child_type = $types->{$self->{members}{$_}};
-    my $access = $child_type && $child_type->isa('DwarfParser::DIE::PointerType') ? "x->$_" : "&(x->$_)";
-
-    "  utstring_printf(s, \"%s$_ : \", INDENT);\n" .
-    '  dwarfparser__' . $self->{members}{$_} . "(s, $access, indent);\n";
-  } ( sort keys %{$self->{members}})) .
-  "  INDENT[indent - 2] = '\\0'; " .
-  '  utstring_printf(s, "\n%s}", INDENT);' .
-  "\n  free(INDENT);\n}";
+$body
+  utstring_printf(c->s, "\\n");
+  INDENT[indent - 2] = '\\0';
+  utstring_printf(c->s, "\\n%s}", INDENT);
+  free(INDENT);
+}
+CODE
+  ;
 }
 
 sub children {
