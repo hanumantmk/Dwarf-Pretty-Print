@@ -25,7 +25,6 @@ sub pp_fun {
   my $return = $type ? $type->name : 'void';
   my $params = join(", ", map { $types->{$_} ? $types->{$_}->name($types) : '?' } @{$self->{params}});
 
-  my $name = "$return (* ?)($params)";
   my $proto = $self->pp_proto($types);
   my $check = $self->_pp_check;
 
@@ -33,7 +32,7 @@ sub pp_fun {
 $proto
 {
 $check
-  utstring_printf(c->s, "$name");
+  utstring_printf(c->s, "(%s (*)(%s)) &%s", "$return", "$params", dwarfparser__ptr2str(_x));
 }
 CODE
   ;

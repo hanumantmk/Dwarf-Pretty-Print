@@ -40,6 +40,7 @@ use constant JUMP_TABLE => {
   'subrange_type'    => \&handle_subrange,
   'subroutine_type'  => \&handle_subroutine,
   'formal_parameter' => \&handle_parameter,
+  'subprogram'       => \&handle_subprogram,
 };
 
 my $last_type;
@@ -59,7 +60,7 @@ TOP: while (my $line = <$dwarf_syms>) {
 
   $id or next;
 
-  $id =~ s/^0x0*//;
+  $id = eval $id;
 
   $type =~ s/^DW_TAG_//;
 
@@ -85,11 +86,11 @@ TOP: while (my $line = <$dwarf_syms>) {
   if ($params{type}) {
     $params{type} =~ /^<(.+?)>$/;
     $params{type} = $1;
-    $params{type} =~ s/^0x0*//;
+    $params{type} = eval $params{type};
   }
 
   if ($params{byte_size}) {
-    $params{byte_size} =~ s/^0x0*//;
+    $params{byte_size} = eval $params{byte_size};
   }
 
   if (JUMP_TABLE->{$type}) {
@@ -109,6 +110,9 @@ my %deduped_types = map { $_->{id}, $_ } map { $types{$_}->children(\%types, {})
 
 print join('', map { "#include <$_>\n" } @sincludes);
 print join('', map { "#include \"$_\"\n" } @lincludes);
+
+print "\n\n// SUBPROGRAM LOOKUP\n";
+print make_subprogram_lookup();
 
 print "\n\n// PROTOTYPES\n";
 foreach my $type (grep { $_->can('pp_proto') } values %types) {
@@ -194,4 +198,36 @@ sub handle_parameter {
   my ($id, $params) = @_;
 
   push @{$last_type->{params}}, $params->{type};
+}
+
+my @programs;
+sub handle_subprogram {
+  my ($id, $params) = @_;
+
+  push @programs, [$params->{name}, eval $params->{low_pc}];
+}
+
+sub make_subprogram_lookup {
+  my $body = join('', map {
+    my ($name, $low_pc) = @$_;
+
+    <<CODE
+    case $low_pc:
+      return "$name";
+CODE
+    ;
+  } @programs);
+
+  <<CODE
+char * dwarfparser__ptr2str(void * ptr)
+{
+  long val = (long)ptr;
+  switch(val) {
+$body
+    default:
+      return "UNKNOWN FUNCTION";
+  };
+}
+CODE
+  ;
 }

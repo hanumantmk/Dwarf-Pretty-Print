@@ -42,7 +42,7 @@ struct foo {
         0,
         0
       ],
-      fun : int (* ?)(char *),
+      fun : (int (*)(char *)) &foo,
       f : 0.000000,
       d : 0,
       ui32 : 1231,
