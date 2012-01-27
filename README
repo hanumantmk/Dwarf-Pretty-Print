@@ -16,9 +16,11 @@ Resources:
 
 # Example output for the given test.c
 
-#  foo_t f = { 0, "lol", 0, { 0 }, &foo };
-#  foo_t h = { 1100, "baz", &f, { 0 }, &foo };
-#  foo_t g = { 1000, "bar", &h, { 0 }, NULL };
+#  uint64_t l = 1;
+#  l <<= 45;
+#  foo_t f = { 0, "lol", 0, { 0 }, &foo, 0, 0, 1231, 1211111, -21, 200, -66 };
+#  foo_t h = { 1100, "baz", &f, { 0 }, &foo, 1.1, 2121323112.2132, 13212, 13212332, 55, 0, 120 };
+#  foo_t g = { 1000, "bar", &h, { 0 }, NULL, 110000.2312, 122.11, 2312, l, 321, 11, 0 };
 #
 #  f.bar = 10;
 #  f.foo_next = &g;
@@ -35,24 +37,45 @@ struct foo {
       bar : 10,
       baz : "lol",
       foo_next : ROOT,
-      fun : int (* ?)(char *),
       stuff : [
         0,
         0,
         0
-      ]
+      ],
+      fun : int (* ?)(char *),
+      f : 0.000000,
+      d : 0,
+      ui32 : 1231,
+      ui64 : 1211111,
+      s : -21,
+      uc : 200,
+      c : -66
     },
-    fun : ROOT->foo_next->foo_next->fun,
     stuff : [
       0,
       0,
       0
-    ]
+    ],
+    fun : ROOT->foo_next->foo_next->fun,
+    f : 1.100000,
+    d : 2.12132e+09,
+    ui32 : 13212,
+    ui64 : 13212332,
+    s : 55,
+    uc : 0,
+    c : 120
   },
-  fun : NULL,
   stuff : [
     0,
     0,
     0
-  ]
+  ],
+  fun : NULL,
+  f : 110000.234375,
+  d : 122.11,
+  ui32 : 2312,
+  ui64 : 35184372088832,
+  s : 321,
+  uc : 11,
+  c : 0
 }

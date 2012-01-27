@@ -18,7 +18,9 @@ sub new {
 sub name {
   my ($self, $types) = @_;
 
-  $types->{$self->{type}}->name . ' *';
+  ($types->{$self->{type}}
+    ? $types->{$self->{type}}->name
+    : 'void') . ' *';
 }
 
 sub pp_fun {

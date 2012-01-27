@@ -88,6 +88,10 @@ TOP: while (my $line = <$dwarf_syms>) {
     $params{type} =~ s/^0x0*//;
   }
 
+  if ($params{byte_size}) {
+    $params{byte_size} =~ s/^0x0*//;
+  }
+
   if (JUMP_TABLE->{$type}) {
     JUMP_TABLE->{$type}->($id, \%params);
   }

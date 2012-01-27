@@ -5,8 +5,25 @@ use warnings;
 
 use base 'DwarfParser::DIE';
 
+use constant ENCODING2TYPE => {
+  'signed.2'        => '"%hd"',
+  'signed.4'        => '"%"PRId32',
+  'signed.8'        => '"%"PRId64',
+  'signed_char.1'   => '"%hhd"',
+  'unsigned_char.1' => '"%hhu"',
+  'unsigned.2'      => '"%hu"',
+  'unsigned.4'      => '"%"PRIu32',
+  'unsigned.8'      => '"%"PRIu64',
+  'float.4'         => '"%f"',
+  'float.8'         => '"%g"',
+};
+
 sub new {
   my ($class, $id, $name, $encoding, $byte_size) = @_;
+
+  $name ||= 'int';
+
+  $name =~ s/__/ /g;
 
   return bless {
     id        => $id,
@@ -28,6 +45,7 @@ sub pp_fun {
   my $proto = $self->pp_proto($types);
   my $check = $self->_pp_check;
   my $name  = $self->name;
+  my $fmt   = ENCODING2TYPE->{join('.', $self->{encoding}, $self->{byte_size})} || '"%d"';
 
   <<CODE
 $proto
@@ -35,7 +53,7 @@ $proto
 $check
   $name * x = _x;
 
-  utstring_printf(c->s, "%d", *x);
+  utstring_printf(c->s, $fmt, *x);
 }
 CODE
   ;

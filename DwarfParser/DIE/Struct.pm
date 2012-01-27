@@ -11,7 +11,7 @@ sub new {
   return bless {
     id      => $id,
     name    => $name,
-    members => { },
+    members => [],
   }, $class;
 }
 
@@ -24,7 +24,7 @@ sub name {
 sub add_member {
   my ($self, $key, $val) = @_;
 
-  $self->{members}{$key} = $val;
+  push @{$self->{members}}, [$key, $val];
 }
 
 sub pp_fun {
@@ -35,18 +35,20 @@ sub pp_fun {
   my $name = $self->name;
 
   my $body = join("  utstring_printf(c->s, \",\\n\");\n", map {
-    my $child_type = $types->{$self->{members}{$_}};
-    my $access = $child_type && $child_type->isa('DwarfParser::DIE::PointerType') ? "x->$_" : "&(x->$_)";
-    my $child_id = $self->{members}{$_};
+    my ($key, $val) = @$_;
+
+    my $child_type = $types->{$val};
+    my $access = $child_type && $child_type->isa('DwarfParser::DIE::PointerType') ? "x->$key" : "&(x->$key)";
+    my $child_id = $val;
 
     <<CHILD
-  dwarf_pp_context_push(c, "%s", "$_");
-  utstring_printf(c->s, "%s$_ : ", c->ws);
-  dwarfparser__$child_id(c, $access);
+  dwarf_pp_context_push(c, "%s", "$key");
+  utstring_printf(c->s, "%s$key : ", c->ws);
+  dwarfparser__$val(c, $access);
   dwarf_pp_context_pop(c);
 CHILD
     ;
-  } ( sort keys %{$self->{members}}));
+  } @{$self->{members}});
 
   <<CODE
 $proto
@@ -67,7 +69,7 @@ sub children {
   return if ($seen->{$self});
   $seen->{$self} = 1;
 
-  ($self, map { my $t = $types->{$_}; $t ? $t->children($types, $seen) : () } values %{$self->{members}});
+  ($self, map { my $t = $types->{$_->[1]}; $t ? $t->children($types, $seen) : () } @{$self->{members}});
 }
 
 1;
